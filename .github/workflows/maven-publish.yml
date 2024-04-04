@@ -14,8 +14,9 @@ jobs:
     permissions:
       contents: write
       packages: write
-      releases: write
       actions: write
+      issues: write
+      pull-requests: write
 
     steps:
     - uses: actions/checkout@v3
