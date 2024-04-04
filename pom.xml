@@ -33,14 +33,14 @@
 							<mainClass>tech.cybersword.tls.fuzzer.controller.TLSController</mainClass>
 						</manifest>
 					</archive>
-					<relelase>17</relelase>
+					<relelase>11</relelase>
 				</configuration>
 			</plugin>
 			<plugin>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.8.1</version>
 				<configuration>
-					<release>17</release>
+					<release>11</release>
 				</configuration>
 			</plugin>
 			<!-- https://github.com/CycloneDX/cyclonedx-maven-plugin -->
