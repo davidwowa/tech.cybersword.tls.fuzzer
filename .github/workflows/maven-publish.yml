@@ -9,12 +9,10 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-
     steps:    
       - uses: actions/checkout@v3
       - name: Set up JDK 17
@@ -24,23 +22,22 @@ jobs:
           distribution: 'temurin'
           server-id: github # Value of the distributionManagement/repository/id field of the pom.xml
           settings-path: ${{ github.workspace }} # location for the settings.xml file
-      - name: Erstelle Maven settings.xml
-          run: |
-            cat <<EOF > ${{ github.workspace }}/settings.xml
-            <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-              xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
-                                  https://maven.apache.org/xsd/settings-1.0.0.xsd">
-              <servers>
-                <server>
-                  <id>repository-id</id>
-                  <username>\${{ secrets.MAVEN_REPO_USERNAME }}</username>
-                  <password>\${{ secrets.MAVEN_REPO_PASSWORD }}</password>
-                </server>
-              </servers>
-            </settings>
-            EOF
-          shell: bash
+      - name: Handle secrets
+        run: |
+          cat <<EOF > ${{ github.workspace }}/settings.xml
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+                                https://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <servers>
+              <server>
+                <id>repository-id</id>
+                <username>\${{ secrets.MAVEN_REPO_USERNAME }}</username>
+                <password>\${{ secrets.MAVEN_REPO_PASSWORD }}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
       - name: Build with Maven
         run: mvn -B package --file pom.xml -s ${{ github.workspace }}/settings.xml
       - name: Deploy to Github Package Registry
