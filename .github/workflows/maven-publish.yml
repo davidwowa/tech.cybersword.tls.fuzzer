@@ -43,12 +43,12 @@ jobs:
         settings-path: ${{ github.workspace }} # location for the settings.xml file
 
     - name: Build with Maven
-      run: mvn -B package --file pom.xml
+      run: mvn -B package --file pom.xml -s ${{ github.workspace }}/settings.xml
 
     - name: Deploy to Github Package Registry
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        mkdir ~/.m2
-        echo "<settings><servers><server><id>github</id><username>davidwowa</username><password>${GITHUB_TOKEN}</password></server></servers></settings>" > ~/.m2/settings.xml
-        mvn deploy
+        //mkdir ~/.m2
+        //echo "<settings><servers><server><id>github</id><username>davidwowa</username><password>${GITHUB_TOKEN}</password></server></servers></settings>" > ~/.m2/settings.xml
+        mvn deploy -s ${{ github.workspace }}/settings.xml
