@@ -31,7 +31,7 @@ jobs:
                                 https://maven.apache.org/xsd/settings-1.0.0.xsd">
             <servers>
               <server>
-                <id>repository-id</id>
+                <id>github</id>
                 <username>\${{ secrets.MAVEN_REPO_USERNAME }}</username>
                 <password>\${{ secrets.MAVEN_REPO_PASSWORD }}</password>
               </server>
