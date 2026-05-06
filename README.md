@@ -277,6 +277,8 @@ Useful workflow:
 
 ## Improvement TODOs
 
+Detailed ticket drafts are available in [TICKETS.md](TICKETS.md).
+
 Near-term improvements:
 
 - Add persistent run IDs so reports, logs, and dashboard rows belong to one execution.

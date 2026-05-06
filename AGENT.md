@@ -173,6 +173,8 @@ Expected result at last update: 11 tests passing.
 
 ## Improvement TODOs
 
+Detailed ticket drafts are available in `TICKETS.md`.
+
 - Add persistent run IDs so reports, logs, and dashboard statuses can be tied to one execution.
 - Save full per-vector results, not only job progress, for better analysis after long runs.
 - Add CSV/JSON report exports next to PDF.
