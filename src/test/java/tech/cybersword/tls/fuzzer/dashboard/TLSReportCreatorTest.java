@@ -23,10 +23,13 @@ class TLSReportCreatorTest {
 				System.currentTimeMillis() - 1000, System.currentTimeMillis(), List.of(status),
 				List.of("suite=RFC target=127.0.0.1:443 started"));
 
-		String pdf = Files.readString(report, StandardCharsets.US_ASCII);
+		String pdf = Files.readString(report, StandardCharsets.ISO_8859_1);
 
 		assertTrue(pdf.startsWith("%PDF-1.4"));
 		assertTrue(pdf.contains("Target: 127.0.0.1:443"));
+		assertTrue(pdf.contains("/Logo Do"));
+		assertTrue(pdf.contains("/Subtype /Image"));
+		assertTrue(pdf.contains("https://cybersword.tech"));
 		assertTrue(pdf.contains("https://www.rfc-editor.org/rfc/rfc5246.txt"));
 		assertTrue(pdf.contains("https://www.rfc-editor.org/rfc/rfc8446.txt"));
 	}

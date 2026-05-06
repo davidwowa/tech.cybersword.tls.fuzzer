@@ -133,7 +133,7 @@ This workspace uses Java 17 and Maven:
 ```bash
 /home/david/progs/apache-maven-3.9.11/bin/mvn test
 /home/david/progs/apache-maven-3.9.11/bin/mvn package
-java -jar target/tech.cybersword.tls.fuzzer-0.0.1-SNAPSHOT.jar
+java -jar target/tech.cybersword.tls.fuzzer-1.0.0-SNAPSHOT.jar
 ```
 
 ## Configuration
@@ -177,6 +177,8 @@ Both browser and Swing dashboards support:
 - `End Tests`
 - live log view
 
+The fuzzer starts idle. A test run begins only after one of the suite buttons is clicked.
+
 The browser dashboard also includes:
 
 - vector catalog at `/api/vectors`
@@ -192,7 +194,15 @@ After a run ends, the project creates a PDF report in:
 reports/
 ```
 
-The report includes:
+The browser dashboard also exposes the latest report through:
+
+```text
+http://localhost:8080/api/report
+```
+
+If no completed run report exists yet, `/api/report` creates a snapshot report from the current dashboard state.
+
+Each PDF report includes:
 
 - target host and port
 - selected suite / start mode
@@ -204,6 +214,20 @@ The report includes:
 - job summary
 - recent logs
 - test conclusion
+
+Report layout:
+
+- `pics/TLSFuzzerLogo.png` is embedded in the header of each page.
+- `https://cybersword.tech` is written in the footer of each page.
+- The footer URL is clickable in PDF readers that support link annotations.
+- Multi-page reports include page numbers.
+
+Report conclusion logic is intentionally simple for now:
+
+- If no dashboard job failed and no job is still running, the report marks the run as completed.
+- If failed or interrupted jobs exist, the report marks the run as needing review.
+
+Current limitation: the report summarizes dashboard jobs, not every individual vector response. Full per-vector evidence is a planned improvement.
 
 ## Logs
 
@@ -251,6 +275,28 @@ Useful workflow:
 4. Run `Random` to add noise.
 5. Pull the PDF report and compare it with target-side logs.
 
+## Improvement TODOs
+
+Near-term improvements:
+
+- Add persistent run IDs so reports, logs, and dashboard rows belong to one execution.
+- Save per-vector results with request name, category, response bytes, exception, and timing.
+- Add CSV and JSON exports next to the PDF report.
+- Parse TLS alert responses and show alert level/description in the dashboard and report.
+- Add response classes: timeout, TCP reset, refused, close, TLS alert, malformed response, unexpected bytes.
+- Add category checkboxes so RFC suites can run selected categories only.
+- Add rate limits and per-suite concurrency controls for fragile or embedded targets.
+- Add dashboard history for completed runs.
+
+Code quality improvements:
+
+- Replace `printStackTrace()` calls with structured logger output.
+- Split legacy generator helpers from the newer RFC/vector generator.
+- Add integration tests using a controlled local TLS server.
+- Add report pagination tests with many status rows and log entries.
+- Make report output directory configurable.
+- Add a report preview screenshot to this README after the layout settles.
+
 ## Test
 
 ```bash
@@ -258,4 +304,3 @@ Useful workflow:
 ```
 
 Last verified locally with 11 tests passing.
-

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 MAVEN_BIN="${MAVEN_BIN:-/home/david/progs/apache-maven-3.9.11/bin/mvn}"
-JAR_PATH="target/tech.cybersword.tls.fuzzer-0.0.1-SNAPSHOT.jar"
+JAR_PATH="${JAR_PATH:-target/tech.cybersword.tls.fuzzer-1.0.0-SNAPSHOT.jar}"
 TLS_PORT="${TLS_PORT:-31337}"
 LOG_DIR="${LOG_DIR:-log}"
 START_LOCAL_SERVER=false
@@ -19,6 +19,7 @@ Options:
 
 Environment:
   MAVEN_BIN=/path/to/mvn   Maven executable to use.
+  JAR_PATH=target/...jar    Jar to execute after build.
   TLS_PORT=31337           Local OpenSSL server port when --with-local-server is used.
   LOG_DIR=log              Directory for generated logs.
 

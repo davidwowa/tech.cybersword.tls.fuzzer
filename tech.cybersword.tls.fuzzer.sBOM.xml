@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bom serialNumber="urn:uuid:f409238c-46df-3d72-9b09-614c5ab525e9" version="1" xmlns="http://cyclonedx.org/schema/bom/1.4">
+<bom serialNumber="urn:uuid:65a5199b-2cfe-3bc2-b81e-3fb33d501006" version="1" xmlns="http://cyclonedx.org/schema/bom/1.4">
   <metadata>
-    <timestamp>2026-05-06T20:59:45Z</timestamp>
+    <timestamp>2026-05-06T21:47:27Z</timestamp>
     <tools>
       <tool>
         <vendor>OWASP Foundation</vendor>
@@ -19,11 +19,11 @@
         </hashes>
       </tool>
     </tools>
-    <component type="library" bom-ref="pkg:maven/tech.cybersword/tech.cybersword.tls.fuzzer@0.0.1-SNAPSHOT?type=jar">
+    <component type="library" bom-ref="pkg:maven/tech.cybersword/tech.cybersword.tls.fuzzer@1.0.0-SNAPSHOT?type=jar">
       <group>tech.cybersword</group>
       <name>tech.cybersword.tls.fuzzer</name>
-      <version>0.0.1-SNAPSHOT</version>
-      <purl>pkg:maven/tech.cybersword/tech.cybersword.tls.fuzzer@0.0.1-SNAPSHOT?type=jar</purl>
+      <version>1.0.0-SNAPSHOT</version>
+      <purl>pkg:maven/tech.cybersword/tech.cybersword.tls.fuzzer@1.0.0-SNAPSHOT?type=jar</purl>
       <externalReferences>
         <reference type="distribution">
           <url>https://maven.pkg.github.com/davidwowa/TLSFuzzer</url>
@@ -92,7 +92,7 @@
     </component>
   </components>
   <dependencies>
-    <dependency ref="pkg:maven/tech.cybersword/tech.cybersword.tls.fuzzer@0.0.1-SNAPSHOT?type=jar">
+    <dependency ref="pkg:maven/tech.cybersword/tech.cybersword.tls.fuzzer@1.0.0-SNAPSHOT?type=jar">
       <dependency ref="pkg:maven/org.apache.commons/commons-lang3@3.20.0?type=jar"/>
     </dependency>
     <dependency ref="pkg:maven/org.apache.commons/commons-lang3@3.20.0?type=jar"/>

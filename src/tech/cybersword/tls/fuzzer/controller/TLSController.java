@@ -69,7 +69,10 @@ public class TLSController {
 	public void mainTest() {
 		BrowserDashboardServer.getInstance().start();
 		TLSDashboard.getInstance().show();
-		startTests(tlsHost, tlsPort, TestSuite.ALL);
+		FuzzerStatusRegistry.getInstance().addLog("dashboard ready; select a test suite to start");
+		if (logger.isLoggable(Level.INFO)) {
+			logger.info("TLS fuzzer dashboard ready; waiting for start button");
+		}
 	}
 
 	public synchronized boolean startTests(String host, int port, TestSuite suite) {
