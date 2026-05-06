@@ -1,117 +1,261 @@
-# TLSFuzzer
+# TLS Fuzzer
 
-https://cybersword.tech
+![TLS Fuzzer Logo](pics/TLSFuzzerLogo.png)
 
-## Goal
+`tech.cybersword.tls.fuzzer` is a Java TLS 1.2 and TLS 1.3 byte-stream fuzzer for people who like looking at protocols where they actually live: on the wire.
 
-## Roadmap
+It generates RFC-shaped TLS records, malformed headers, length-boundary probes, random payloads, ClientHello variants, extension probes, and illustrated TLS flows, then fires them at a target and shows the run in a terminal-style browser dashboard, Swing dashboard, and system tray.
 
-# Wireshark  
+Use it only on systems you own or are explicitly allowed to test.
 
-![Malformed TLS Packet](pics/MalformedTLSPacket.png)  
+## Screenshots
 
-## mac
+### Browser Dashboard
 
-`/Applications/Wireshark.app/Contents/MacOS/Wireshark`  
+![Browser dashboard](pics/TLSFuzzerBrowser.png)
 
-# TLS Server
+The browser dashboard runs at `http://localhost:8080/` by default. It shows target input, suite buttons, live job progress, logs, RFC vector categories, and PDF report download.
 
-## OpenSSL
+### Swing Dashboard
 
-### Unix
+![Swing dashboard](pics/TLSFuzzerGUI.png)
 
-`openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes`  
-`openssl s_server -key key.pem -cert cert.pem -accept 31337 -www -debug`  
+The Java Swing UI mirrors the browser dashboard in a terminal style: target input, TLS 1.2/TLS 1.3/RFC/random suite buttons, status table, and live log view.
 
-### Windows
+### System Tray
 
-`& 'C:\Program Files\Git\usr\bin\openssl.exe' req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes`  
-`& 'C:\Program Files\Git\usr\bin\openssl.exe' s_server -key key.pem -cert cert.pem -accept 31337 -www -debug`  
-`& 'C:\Program Files\Git\usr\bin\openssl.exe' x509 -in cert.pem -text`  
+![System tray](pics/TLSSysTray.png)
 
+The tray menu opens the dashboard, shows project info, and exits the tool when a desktop tray is available.
+
+### Malformed TLS Packet Example
+
+![Malformed TLS packet](pics/MalformedTLSPacket.png)
+
+The fuzzer includes malformed record and handshake length probes, enum-boundary values, unusual versions, and broad header selector coverage.
+
+## Why This Exists
+
+TLS implementations are full of interesting edge conditions: legacy record versions, compatibility mode, uint16/uint24 lengths, extension vectors, handshake state transitions, alert parsing, cipher-suite filtering, downgrade behavior, parser tolerance, and error handling paths that normal clients never touch.
+
+This project is built for that layer. It is not a polished web scanner. It is a byte-level probe box for TLS parser behavior.
+
+Good use cases:
+
+- Shake a custom TLS terminator, proxy, load balancer, embedded stack, or lab server.
+- Compare TLS 1.2 and TLS 1.3 parser behavior.
+- Generate reproducible RFC-inspired byte streams.
+- Stress malformed headers and declared-length mismatches.
+- Watch long fuzzing runs in a browser or desktop dashboard.
+- Produce a compact PDF report after a run.
+
+## Current Coverage
+
+The RFC byte-stream suite currently generates `48561` vectors split into categories:
+
+- `client-hello`
+- `xargs`
+- `record-header`
+- `handshake-header`
+- `alert-header`
+- `content-type`
+- `protocol-version`
+- `handshake-type`
+- `alert-description`
+- `cipher-suite`
+- `named-group`
+- `signature-scheme`
+- `extension-type`
+- `malformed-length`
+
+Inputs and references:
+
+- TLS 1.2 RFC 5246: <https://www.rfc-editor.org/rfc/rfc5246.txt>
+- TLS 1.3 RFC 8446: <https://www.rfc-editor.org/rfc/rfc8446.txt>
+- Illustrated TLS 1.2: <https://tls12.xargs.org/#open-all>
+- Illustrated TLS 1.3: <https://tls13.xargs.org/#open-all>
+
+The suite covers RFC-defined fields and boundary probes, including:
+
+- TLSPlaintext record headers
+- content type values and boundaries
+- protocol versions including legacy and TLS 1.3 compatibility values
+- uint16 record length probes
+- handshake message type values
+- uint24 handshake length probes
+- alert level and alert description probes
+- TLS 1.2 and TLS 1.3 ClientHello records
+- randomized extension payloads
+- cipher suites
+- supported groups and key shares
+- signature schemes
+- extension type probes
+- malformed length records
+
+Fully enumerating every possible TLS byte stream is not practical because TLS contains variable-length opaque fields up to 2^16 and 2^24 bytes. The project focuses on high-value parser surfaces: all one-byte header selectors, RFC enum values, known compatibility fields, and length boundaries.
+
+## Quick Start
+
+Build and start the fuzzer:
+
+```bash
+./start.sh
 ```
-Using auto DH parameters
-Using default temp ECDH parameters
-ACCEPT
-read from 0x7fd62ef07c40 [0x7fd630812803] (5 bytes => 5 (0x5))
-0000 - 16 03 01 00 f8                                    .....
-read from 0x7fd62ef07c40 [0x7fd630812808] (248 bytes => 248 (0xF8))
-0000 - 01 00 00 f4 03 03 00 01-02 03 04 05 06 07 08 09   ................
-0010 - 0a 0b 0c 0d 0e 0f 10 11-12 13 14 15 16 17 18 19   ................
-0020 - 1a 1b 1c 1d 1e 1f 20 e0-e1 e2 e3 e4 e5 e6 e7 e8   ...... .........
-0030 - e9 ea eb ec ed ee ef f0-f1 f2 f3 f4 f5 f6 f7 f8   ................
-0040 - f9 fa fb fc fd fe ff 00-08 13 02 13 03 13 01 00   ................
-0050 - ff 01 00 00 a3 00 00 00-18 00 16 00 00 13 65 78   ..............ex
-0060 - 61 6d 70 6c 65 2e 75 6c-66 68 65 69 6d 2e 6e 65   ample.ulfheim.ne
-0070 - 74 00 0b 00 04 03 00 01-02 00 0a 00 16 00 14 00   t...............
-0080 - 1d 00 17 00 1e 00 19 00-18 01 00 01 01 01 02 01   ................
-0090 - 03 01 04 00 23 00 00 00-16 00 00 00 17 00 00 00   ....#...........
-00a0 - 0d 00 1e 00 1c 04 03 05-03 06 03 08 07 08 08 08   ................
-00b0 - 09 08 0a 08 0b 08 04 08-05 08 06 04 01 05 01 06   ................
-00c0 - 01 00 2b 00 03 02 03 04-00 2d 00 02 01 01 00 33   ..+......-.....3
-00d0 - 00 26 00 24 00 1d 00 20-35 80 72 d6 36 58 80 d1   .&.$... 5.r.6X..
-00e0 - ae ea 32 9a df 91 21 38-38 51 ed 21 a2 8e 3b 75   ..2...!88Q.!..;u
-00f0 - e9 65 d0 d2 cd 16 62 54-                          .e....bT
-write to 0x7fd62ef07c40 [0x7fd630820200] (7 bytes => 7 (0x7))
-0000 - 15 03 03 00 02 02 28                              ......(
-4549750444:error:140270C1:SSL routines:ACCEPT_SR_CLNT_HELLO_C:no shared cipher:/System/Volumes/Data/SWE/macOS/BuildRoots/37599d3d49/Library/Caches/com.apple.xbs/Sources/libressl/libressl-56.60.4/libressl-2.8/ssl/ssl_srvr.c:1115:
-ACCEPT
+
+Start a local OpenSSL TLS target first, then run the fuzzer against it:
+
+```bash
+./start.sh --with-local-server
 ```
-## ncat
 
-`ncat -vvvv --listen --ssl`  
+Start without rebuilding:
 
+```bash
+./start.sh --skip-build
 ```
-Ncat: Version 7.91 ( https://nmap.org/ncat )
-Ncat: Generating a temporary 2048-bit RSA key. Use --ssl-key and --ssl-cert to use a permanent one.
-Ncat: SHA-1 fingerprint: 10B6 FA23 0BEF B596 26D2 66FD 7E87 FD9F 10AF 3A2D
-NCAT DEBUG: Initialized fdlist with 103 maxfds
-Ncat: Listening on :::31337
-NCAT DEBUG: Added fd 3 to list, nfds 1, maxfd 3
-Ncat: Listening on 0.0.0.0:31337
-NCAT DEBUG: Added fd 4 to list, nfds 2, maxfd 4
-NCAT DEBUG: Added fd 0 to list, nfds 3, maxfd 4
-NCAT DEBUG: Initialized fdlist with 100 maxfds
-NCAT DEBUG: selecting, fdmax 4
-NCAT DEBUG: select returned 1 fds ready
-NCAT DEBUG: fd 4 is ready
-Ncat: Connection from 127.0.0.1.
-NCAT DEBUG: Swapping fd[0] (3) with fd[2] (0)
-NCAT DEBUG: Removed fd 3 from list, nfds 2, maxfd 4
-NCAT DEBUG: Swapping fd[1] (4) with fd[1] (4)
-NCAT DEBUG: Removed fd 4 from list, nfds 1, maxfd 0
-Ncat: Connection from 127.0.0.1:59106.
-NCAT DEBUG: Added fd 5 to list, nfds 2, maxfd 5
-NCAT DEBUG: selecting, fdmax 5
-NCAT DEBUG: select returned 1 fds ready
-NCAT DEBUG: fd 5 is ready
-NCAT DEBUG: selecting, fdmax 5
-NCAT DEBUG: select returned 1 fds ready
-NCAT DEBUG: fd 5 is ready
-Ncat: Failed SSL connection from 127.0.0.1: error:00000000:lib(0):func(0):reason(0)
-NCAT DEBUG: Swapping fd[1] (5) with fd[1] (5)
-NCAT DEBUG: Removed fd 5 from list, nfds 1, maxfd 0
+
+Open:
+
+```text
+http://localhost:8080/
 ```
-# TLS Client
 
-## OpenSSL
+Default target:
 
-`openssl s_client -connect localhost:44330`  
+```text
+localhost:31337
+```
 
-# TLS Knowledge base
+## Manual Build
 
-[RFC8446](https://datatracker.ietf.org/doc/html/rfc8446#appendix-A.1)  
-[IANA TLS extension list](https://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml)  
-[TLS1.2 bytebybyte description](https://tls12.xargs.org)  
-[TLS1.3 bytebybyte description](https://tls13.xargs.org)  
-[ncat with ssl](https://nmap.org/ncat/guide/ncat-ssl.html)  
+This workspace uses Java 17 and Maven:
 
-# Randoms
+```bash
+/home/david/progs/apache-maven-3.9.11/bin/mvn test
+/home/david/progs/apache-maven-3.9.11/bin/mvn package
+java -jar target/tech.cybersword.tls.fuzzer-0.0.1-SNAPSHOT.jar
+```
 
-[secure random](https://www.baeldung.com/java-secure-random)  
+## Configuration
 
-# Build
+Runtime configuration lives in:
 
-`./prepare.sh`  
-`~/java_env/jdk/Contents/Home/bin/java -jar target/tech.cybersword.tls.fuzzer-0.0.1-SNAPSHOT.jar`  
-`./clean_logs.sh`  
+```text
+tech.cybersword.tls.fuzzer.properties
+```
+
+Important defaults:
+
+- TLS target host: `localhost`
+- TLS target port: `31337`
+- request count for random/legacy jobs: `100`
+- worker threads: `4`
+- socket timeout: `100` ms
+- browser dashboard: enabled
+- browser dashboard port: `8080`
+- browser dashboard HTTPS: disabled by default
+
+HTTPS dashboard mode can be enabled with a Java keystore:
+
+```properties
+dashboard.browser.https.enabled=true
+dashboard.browser.https.keystore=/path/to/dashboard.jks
+dashboard.browser.https.keystorePassword=changeit
+```
+
+## Dashboard Controls
+
+Both browser and Swing dashboards support:
+
+- target host/IP input
+- target port input
+- `Start All`
+- `TLS 1.2`
+- `TLS 1.3`
+- `RFC`
+- `Random`
+- `End Tests`
+- live log view
+
+The browser dashboard also includes:
+
+- vector catalog at `/api/vectors`
+- live status at `/api/status`
+- health check at `/api/health`
+- PDF report download at `/api/report`
+
+## Reports
+
+After a run ends, the project creates a PDF report in:
+
+```text
+reports/
+```
+
+The report includes:
+
+- target host and port
+- selected suite / start mode
+- start and end time
+- total configured tests
+- completed tests
+- failed jobs
+- links to RFC 5246 and RFC 8446
+- job summary
+- recent logs
+- test conclusion
+
+## Logs
+
+All runtime logs are written under:
+
+```text
+log/
+```
+
+This includes Java logger output and OpenSSL helper logs from `start.sh --with-local-server`.
+
+## Project Structure
+
+```text
+src/tech/cybersword/tls/fuzzer/client/       Raw socket TLS client sender
+src/tech/cybersword/tls/fuzzer/controller/   Main orchestration and suite control
+src/tech/cybersword/tls/fuzzer/dashboard/    Browser dashboard, status registry, PDF reports
+src/tech/cybersword/tls/fuzzer/generator/    TLS 1.2/1.3 byte-stream and RFC vector generators
+src/tech/cybersword/tls/fuzzer/server/       Local server-side helpers
+src/tech/cybersword/tls/fuzzer/ui/           Swing dashboard and system tray
+src/tech/cybersword/tls/fuzzer/util/         Logging, random, array, string, property helpers
+src/test/java/                               JUnit tests
+pics/                                        README and UI images
+log/                                         Runtime logs
+reports/                                     Generated PDF reports
+```
+
+## Hacker Notes
+
+The most interesting targets are rarely the happy paths. Try this against a lab terminator with debug logging enabled and watch:
+
+- which malformed records produce alerts vs silent closes
+- which TLS 1.3 compatibility fields are tolerated
+- whether huge declared lengths cause slow paths
+- how the target handles unknown handshake types
+- how alert parsing behaves with odd levels/descriptions
+- how extension order and extension type values are processed
+- whether TLS 1.2 and TLS 1.3 code paths fail differently
+
+Useful workflow:
+
+1. Start a target with verbose TLS logs.
+2. Run only `RFC` first to map parser boundaries.
+3. Run `TLS 1.2` and `TLS 1.3` to compare baseline behavior.
+4. Run `Random` to add noise.
+5. Pull the PDF report and compare it with target-side logs.
+
+## Test
+
+```bash
+/home/david/progs/apache-maven-3.9.11/bin/mvn test
+```
+
+Last verified locally with 11 tests passing.
+

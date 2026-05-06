@@ -17,13 +17,13 @@ public class TLSRandomNumber {
 
 	public long generateNumbers(long min, long max) {
 		SecureRandom random = new SecureRandom();
-		return random.nextLong() % (max - min + 1) + min;
+		return random.nextLong(min, max + 1);
 	}
 
 	public BigDecimal generateBigDecimal(BigDecimal min, BigDecimal max) {
 		SecureRandom random = new SecureRandom();
 		BigDecimal range = max.subtract(min);
-		BigDecimal randomNumberInRange = range.multiply(new BigDecimal(random.nextLong()));
+		BigDecimal randomNumberInRange = range.multiply(BigDecimal.valueOf(random.nextDouble()));
 		return randomNumberInRange.add(min);
 	}
 

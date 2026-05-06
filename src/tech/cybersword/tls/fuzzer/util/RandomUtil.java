@@ -1,13 +1,10 @@
 package tech.cybersword.tls.fuzzer.util;
 
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class RandomUtil {
 
-	private static final Logger logger = LoggerUtil.getLogger(RandomUtil.class.getName());
+	private static final SecureRandom random = new SecureRandom();
 
 	public static RandomUtil instance;
 
@@ -22,16 +19,9 @@ public class RandomUtil {
 	}
 
 	public byte[] generateRandomArray(int arrayLength) {
-		try {
-			SecureRandom random = SecureRandom.getInstanceStrong();
-			return random.generateSeed(arrayLength);
-		} catch (NoSuchAlgorithmException e) {
-			if (logger.isLoggable(Level.SEVERE)) {
-				logger.severe("error on generating random array" + e.getMessage());
-			}
-			e.printStackTrace();
-		}
-		return null;
+		byte[] arr = new byte[arrayLength];
+		random.nextBytes(arr);
+		return arr;
 	}
 
 	public byte[] getEmptyArray() {
@@ -39,15 +29,9 @@ public class RandomUtil {
 	}
 
 	public int generateRandomNumber(int start, int end) {
-		try {
-			SecureRandom random = SecureRandom.getInstanceStrong();
-			return random.nextInt(start, end);
-		} catch (NoSuchAlgorithmException e) {
-			if (logger.isLoggable(Level.SEVERE)) {
-				logger.severe("error on generating random number" + e.getMessage());
-			}
-			e.printStackTrace();
+		if (start >= end) {
+			return start;
 		}
-		return -1;
+		return random.nextInt(start, end);
 	}
 }

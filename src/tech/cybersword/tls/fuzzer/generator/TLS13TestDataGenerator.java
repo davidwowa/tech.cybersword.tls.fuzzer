@@ -25,31 +25,7 @@ public class TLS13TestDataGenerator {
 	}
 
 	public byte[] generateExampleTLSHello() {
-		var recordHeader = createTLSRecordHeader0();
-		var handshakeHeader = createTestHandshakeHeader1();
-		var clientVersion = createTestClientVersion2();
-		var clientRandom = createTestClientRandom3();
-		var sessionID = createTestSessionID4();
-		var cipherSuite = createTestCipherSuites5();
-		var compressionMethods = createTestCompressionMethods6();
-
-		ArrayUtils arrayUtils = new ArrayUtils();
-
-		TLSExtensionDataGenerator extensionDataGenerator = new TLSExtensionDataGenerator();
-
-		var arr = arrayUtils.appendAllArrays(recordHeader, handshakeHeader, clientVersion, clientRandom, sessionID,
-				cipherSuite, compressionMethods, extensionDataGenerator.createTestExtensionLength7(),
-				extensionDataGenerator.createTestExtensionServerName8(),
-				extensionDataGenerator.createTestExtensionECPointsFormats9(),
-				extensionDataGenerator.createTestExtensionSupportedGroups10(),
-				extensionDataGenerator.createTestExtensionSessionTicket11(),
-				extensionDataGenerator.createTestExtensionEncryptThenMAC12(),
-				extensionDataGenerator.createTestExtensionExtendedMasterSecret13(),
-				extensionDataGenerator.createTestExtensionSignatureAlgorithms14(),
-				extensionDataGenerator.createTestExtensionSupportedVersions15(),
-				extensionDataGenerator.createTestExtensionPSKKeyExchangeModes16(),
-				extensionDataGenerator.createTestExtensionKeyShare17());
-
+		var arr = TLSProtocolDataGenerator.getInstance().createTLS13ClientHello();
 		if (logger.isLoggable(Level.FINE)) {
 			logger.fine(StringUtil.getInstance().toHexString(arr));
 		}
@@ -57,31 +33,7 @@ public class TLS13TestDataGenerator {
 	}
 
 	public byte[] generateExampleTLSHelloRandomExtensionData() {
-		var recordHeader = createTLSRecordHeader0();
-		var handshakeHeader = createTestHandshakeHeader1();
-		var clientVersion = createTestClientVersion2();
-		var clientRandom = createTestClientRandom3();
-		var sessionID = createTestSessionID4();
-		var cipherSuite = createTestCipherSuites5();
-		var compressionMethods = createTestCompressionMethods6();
-
-		ArrayUtils arrayUtils = new ArrayUtils();
-
-		TLSExtensionDataGenerator extensionDataGenerator = new TLSExtensionDataGenerator();
-
-		var arr = arrayUtils.appendAllArrays(recordHeader, handshakeHeader, clientVersion, clientRandom, sessionID,
-				cipherSuite, compressionMethods, extensionDataGenerator.createTestExtensionLength7(),
-				extensionDataGenerator.createTestExtensionServerNameR8(),
-				extensionDataGenerator.createTestExtensionECPointsFormatsR9(),
-				extensionDataGenerator.createTestExtensionSupportedGroupsR10(),
-				extensionDataGenerator.createTestExtensionSessionTicketR11(),
-				extensionDataGenerator.createTestExtensionEncryptThenMACR12(),
-				extensionDataGenerator.createTestExtensionExtendedMasterSecretR13(),
-				extensionDataGenerator.createTestExtensionSignatureAlgorithmsR14(),
-				extensionDataGenerator.createTestExtensionSupportedVersionsR15(),
-				extensionDataGenerator.createTestExtensionPSKKeyExchangeModesR16(),
-				extensionDataGenerator.createTestExtensionKeyShareR17());
-
+		var arr = TLSProtocolDataGenerator.getInstance().createTLS13ClientHelloWithRandomExtensions();
 		if (logger.isLoggable(Level.FINE)) {
 			logger.fine(StringUtil.getInstance().toHexString(arr));
 		}

@@ -1,8 +1,10 @@
 package tech.cybersword.tls.fuzzer.client;
 
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.net.SocketTimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -42,17 +44,26 @@ public class TLSClient {
 			send = true;
 			byte[] buffer = new byte[1024];
 			int bytesRead;
-			StringBuilder response = new StringBuilder();
+			ByteArrayOutputStream response = new ByteArrayOutputStream();
 
-			while ((bytesRead = in.read(buffer)) != -1) {
-				response.append(new String(buffer, 0, bytesRead));
+			while (true) {
+				try {
+					bytesRead = in.read(buffer);
+					if (bytesRead == -1) {
+						break;
+					}
+					response.write(buffer, 0, bytesRead);
+				} catch (SocketTimeoutException e) {
+					break;
+				}
 			}
-			receive = true;
+
+			byte[] arr = response.toByteArray();
+			receive = arr.length > 0;
 			if (logger.isLoggable(Level.FINE)) {
-				logger.log(Level.FINE, String.format("Response from server: %s", response.toString()));
+				logger.log(Level.FINE, String.format("Response from server: %s",
+						StringUtil.getInstance().toHexString(arr)));
 			}
-
-			byte[] arr = response.toString().getBytes();
 
 			if (arr.length > 0 && logger.isLoggable(Level.INFO)) {
 				logger.info(String.format("\n%s:%s \nrequest:%s \nresponse %s", host, port,

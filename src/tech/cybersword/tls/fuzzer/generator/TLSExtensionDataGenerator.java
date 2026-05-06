@@ -126,9 +126,9 @@ public class TLSExtensionDataGenerator {
 
 	public byte[] createTestExtensionServerNameR8() {
 		// 65 - 74 -> example.ulfheim.net
-		// 2^14 is max value for server bane
+		// 2^14 is max value for server name
 		byte[] array = RandomUtil.getInstance()
-				.generateRandomArray(RandomUtil.getInstance().generateRandomNumber(2 ^ 13, 2 ^ 18));
+				.generateRandomArray(RandomUtil.getInstance().generateRandomNumber(1 << 13, 1 << 14));
 		if (logger.isLoggable(Level.FINE)) {
 			logger.fine(String.format("length\tExtensionServerName\t\t\t%s", array.length));
 		}

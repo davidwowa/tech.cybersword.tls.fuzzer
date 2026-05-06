@@ -6,7 +6,11 @@ bin/
 .settings/
 .vscode/
 logs/
-test/
+log/
+reports/
+/test/
+*.log
+*.log.*
 TLSFuzzer-sBOM.json
 TLSFuzzer-sBOM.xml
 TLSFuzzer.log*

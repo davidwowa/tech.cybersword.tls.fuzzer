@@ -15,6 +15,11 @@ public class CommonProperties {
     private static int amountTLSRequests;
     private static int threadsAmount;
     private static int requestTimeout;
+    private static boolean browserDashboardEnabled;
+    private static int browserDashboardPort;
+    private static boolean browserDashboardHttpsEnabled;
+    private static String browserDashboardKeyStorePath;
+    private static String browserDashboardKeyStorePassword;
 
     private static int randomMinArraySize;
     private static int randomMaxArraySize;
@@ -48,6 +53,11 @@ public class CommonProperties {
             setAmountTLSRequests(Integer.valueOf(reader.getProperty("tls.amountTLSRequests")));
             setThreadsAmount(Integer.valueOf(reader.getProperty("tls.threadsAmount")));
             setRequestTimeout(Integer.valueOf(reader.getProperty("tls.requestTimeout")));
+            setBrowserDashboardEnabled(Boolean.parseBoolean(reader.getProperty("dashboard.browser.enabled")));
+            setBrowserDashboardPort(Integer.valueOf(reader.getProperty("dashboard.browser.port")));
+            setBrowserDashboardHttpsEnabled(Boolean.parseBoolean(reader.getProperty("dashboard.browser.https.enabled")));
+            setBrowserDashboardKeyStorePath(reader.getProperty("dashboard.browser.https.keystore"));
+            setBrowserDashboardKeyStorePassword(reader.getProperty("dashboard.browser.https.keystorePassword"));
             setRandomArraySize(Integer.valueOf(reader.getProperty("data.random.arraySize")));
             setRandomMaxArraySize(Integer.valueOf(reader.getProperty("data.random.maxSizeArray")));
             setRandomMinArraySize(Integer.valueOf(reader.getProperty("data.random.minSizeArray")));
@@ -125,6 +135,46 @@ public class CommonProperties {
 
     public static void setRandomArraySize(int randomArraySize) {
         CommonProperties.randomArraySize = randomArraySize;
+    }
+
+    public static boolean isBrowserDashboardEnabled() {
+        return browserDashboardEnabled;
+    }
+
+    public static void setBrowserDashboardEnabled(boolean browserDashboardEnabled) {
+        CommonProperties.browserDashboardEnabled = browserDashboardEnabled;
+    }
+
+    public static int getBrowserDashboardPort() {
+        return browserDashboardPort;
+    }
+
+    public static void setBrowserDashboardPort(int browserDashboardPort) {
+        CommonProperties.browserDashboardPort = browserDashboardPort;
+    }
+
+    public static boolean isBrowserDashboardHttpsEnabled() {
+        return browserDashboardHttpsEnabled;
+    }
+
+    public static void setBrowserDashboardHttpsEnabled(boolean browserDashboardHttpsEnabled) {
+        CommonProperties.browserDashboardHttpsEnabled = browserDashboardHttpsEnabled;
+    }
+
+    public static String getBrowserDashboardKeyStorePath() {
+        return browserDashboardKeyStorePath;
+    }
+
+    public static void setBrowserDashboardKeyStorePath(String browserDashboardKeyStorePath) {
+        CommonProperties.browserDashboardKeyStorePath = browserDashboardKeyStorePath;
+    }
+
+    public static String getBrowserDashboardKeyStorePassword() {
+        return browserDashboardKeyStorePassword;
+    }
+
+    public static void setBrowserDashboardKeyStorePassword(String browserDashboardKeyStorePassword) {
+        CommonProperties.browserDashboardKeyStorePassword = browserDashboardKeyStorePassword;
     }
 
 }

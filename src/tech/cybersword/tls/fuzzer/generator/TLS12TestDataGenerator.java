@@ -2,7 +2,6 @@ package tech.cybersword.tls.fuzzer.generator;
 
 import java.util.Random;
 
-import tech.cybersword.tls.fuzzer.util.ArrayUtils;
 import tech.cybersword.tls.fuzzer.util.StringUtil;
 
 public class TLS12TestDataGenerator {
@@ -20,20 +19,11 @@ public class TLS12TestDataGenerator {
 	}
 
 	public byte[] generateExampleTLSHello() {
-		var recordHeader = createTestRecordHeader0();
-		var handshakeHeader = createTestHandshakeHeader1();
-		var clientVersion = createTestClientVersion2();
-		var clientRandom = createTestClientRandom3();
-		var sessionID = createTestSessionID4();
-		var cipherSuite = createTestCipherSuites5();
-		var compressionMethods = createTestCompressionMethods6();
+		return TLSProtocolDataGenerator.getInstance().createTLS12ClientHello();
+	}
 
-		ArrayUtils arrayUtils = new ArrayUtils();
-
-		var arr = arrayUtils.appendAllArrays(recordHeader, handshakeHeader, clientVersion, clientRandom, sessionID,
-				cipherSuite, compressionMethods);
-
-		return arr;
+	public byte[] generateExampleTLSHelloRandomExtensionData() {
+		return TLSProtocolDataGenerator.getInstance().createTLS12ClientHelloWithRandomExtensions();
 	}
 
 	public byte[] createTestTLSHello() {

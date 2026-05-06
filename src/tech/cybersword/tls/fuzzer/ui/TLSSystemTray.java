@@ -1,5 +1,6 @@
 package tech.cybersword.tls.fuzzer.ui;
 
+import java.awt.GraphicsEnvironment;
 import java.awt.Image;
 import java.awt.MenuItem;
 import java.awt.PopupMenu;
@@ -38,19 +39,19 @@ public class TLSSystemTray {
     }
 
     public void showInfoMessage(String title, String text) {
-        if (systemTrayEnabled) {
+        if (systemTrayEnabled && trayIcon != null) {
             trayIcon.displayMessage(title, text, TrayIcon.MessageType.INFO);
         }
     }
 
     public void showErrorMessage(String title, String text) {
-        if (systemTrayEnabled) {
+        if (systemTrayEnabled && trayIcon != null) {
             trayIcon.displayMessage(title, text, TrayIcon.MessageType.ERROR);
         }
     }
 
     public void showWarningMessage(String title, String text) {
-        if (systemTrayEnabled) {
+        if (systemTrayEnabled && trayIcon != null) {
             trayIcon.displayMessage(title, text, TrayIcon.MessageType.WARNING);
         }
     }
@@ -60,17 +61,22 @@ public class TLSSystemTray {
             PopupMenu popupMenu = new PopupMenu();
 
             MenuItem item1 = new MenuItem("Fuzzing Test 1");
-            MenuItem item2 = new MenuItem("Info");
+            MenuItem item2 = new MenuItem("Dashboard");
+            MenuItem item3 = new MenuItem("Info");
             MenuItem exitItem = new MenuItem("Exit");
 
             ActionListener tlsFuzzingTest1ActionListener = e -> TLSController.getInstance().mainTest();
-            ActionListener infoActionListener = e -> logger.info("TODO");
+            ActionListener dashboardActionListener = e -> TLSDashboard.getInstance().show();
+            ActionListener infoActionListener = e -> logger.info(
+                    "TLS fuzzer transfers ClientHello records for TLS 1.2 and TLS 1.3 with randomized payload variants.");
             item1.addActionListener(tlsFuzzingTest1ActionListener);
-            item2.addActionListener(infoActionListener);
+            item2.addActionListener(dashboardActionListener);
+            item3.addActionListener(infoActionListener);
             exitItem.addActionListener(e -> System.exit(0));
 
             popupMenu.add(item1);
             popupMenu.add(item2);
+            popupMenu.add(item3);
             popupMenu.addSeparator();
             popupMenu.add(exitItem);
 
@@ -82,6 +88,7 @@ public class TLSSystemTray {
             SystemTray tray = SystemTray.getSystemTray();
             tray.add(trayIcon);
         } catch (Exception e) {
+            systemTrayEnabled = false;
             if (logger.isLoggable(Level.SEVERE)) {
                 logger.severe("Error on init system tray");
             }
@@ -90,6 +97,12 @@ public class TLSSystemTray {
     }
 
     private boolean checkAWTEnv() {
+        if (GraphicsEnvironment.isHeadless()) {
+            if (logger.isLoggable(Level.SEVERE)) {
+                logger.severe("Graphics environment is headless!");
+            }
+            return false;
+        }
         if (!SystemTray.isSupported()) {
             if (logger.isLoggable(Level.SEVERE)) {
                 logger.severe("System tray is not supported!");
