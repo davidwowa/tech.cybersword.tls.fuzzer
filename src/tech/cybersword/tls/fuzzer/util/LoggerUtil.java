@@ -36,10 +36,9 @@ public class LoggerUtil {
             FileHandler fileHandler = new FileHandler(logFilePattern, 1024 * 1024, 5, true);
             fileHandler.setFormatter(new SimpleFormatter());
             logger.addHandler(fileHandler);
-        } catch (IOException | SecurityException e) {
-            logger.log(Level.SEVERE, "Error occurred in setting up the logger", e);
-            e.printStackTrace();
-        }
+	        } catch (IOException | SecurityException e) {
+	            logger.log(Level.SEVERE, "Error occurred in setting up the logger", e);
+	        }
 
         logger.setLevel(Level.ALL);
 

@@ -38,6 +38,7 @@ public class BrowserDashboardServer {
 	private static final Logger logger = LoggerUtil.getLogger(BrowserDashboardServer.class.getName());
 
 	private static BrowserDashboardServer instance;
+	private static volatile String vectorCatalogJson;
 
 	private HttpServer server;
 	private String baseUrl;
@@ -58,16 +59,17 @@ public class BrowserDashboardServer {
 		}
 		try {
 			int port = CommonProperties.getBrowserDashboardPort();
-			server = CommonProperties.isBrowserDashboardHttpsEnabled() ? createHttpsServer(port) : HttpServer.create(
-					new InetSocketAddress(port), 0);
-			server.createContext("/", new IndexHandler());
-			server.createContext("/api/status", new StatusHandler());
-			server.createContext("/api/vectors", new VectorsHandler());
-			server.createContext("/api/start", new StartHandler());
-			server.createContext("/api/stop", new StopHandler());
-			server.createContext("/api/report", new ReportHandler());
-			server.createContext("/api/health", exchange -> send(exchange, 200, "application/json", "{\"status\":\"ok\"}"));
-			server.setExecutor(Executors.newCachedThreadPool());
+				server = CommonProperties.isBrowserDashboardHttpsEnabled() ? createHttpsServer(port)
+						: HttpServer.create(new InetSocketAddress(port), 0);
+				server.createContext("/", new IndexHandler());
+				server.createContext("/api/status", new StatusHandler());
+				server.createContext("/api/vectors", new VectorsHandler());
+				server.createContext("/api/start", new StartHandler());
+				server.createContext("/api/stop", new StopHandler());
+				server.createContext("/api/report", new ReportHandler());
+				server.createContext("/api/health", exchange -> send(exchange, 200, "application/json", "{\"status\":\"ok\"}"));
+				server.createContext("/pics/", new StaticPicsHandler());
+				server.setExecutor(Executors.newFixedThreadPool(Math.max(2, CommonProperties.getThreadsAmount())));
 			server.start();
 			baseUrl = (server instanceof HttpsServer ? "https" : "http") + "://localhost:" + port + "/";
 			if (logger.isLoggable(Level.INFO)) {
@@ -78,6 +80,55 @@ public class BrowserDashboardServer {
 				logger.log(Level.SEVERE, "Could not start browser dashboard", e);
 			}
 		}
+	}
+
+	private static String vectorCatalogJson() {
+		String cached = vectorCatalogJson;
+		if (cached != null) {
+			return cached;
+		}
+		synchronized (BrowserDashboardServer.class) {
+			if (vectorCatalogJson == null) {
+				vectorCatalogJson = buildVectorCatalogJson();
+			}
+			return vectorCatalogJson;
+		}
+	}
+
+	private static String buildVectorCatalogJson() {
+		List<TLSFuzzVector> vectors = TLSProtocolDataGenerator.getInstance().createRfcByteStreamVectors();
+		Map<String, Integer> categories = new java.util.LinkedHashMap<>();
+		for (TLSFuzzVector vector : vectors) {
+			categories.merge(vector.getCategory(), 1, Integer::sum);
+		}
+		StringBuilder json = new StringBuilder();
+		json.append("{\"count\":").append(vectors.size()).append(",\"categories\":[");
+		int categoryIndex = 0;
+		for (Map.Entry<String, Integer> entry : categories.entrySet()) {
+			if (categoryIndex++ > 0) {
+				json.append(',');
+			}
+			json.append('{');
+			json.append("\"name\":\"").append(json(entry.getKey())).append("\",");
+			json.append("\"count\":").append(entry.getValue());
+			json.append('}');
+		}
+		json.append("],\"vectors\":[");
+		for (int i = 0; i < vectors.size(); i++) {
+			TLSFuzzVector vector = vectors.get(i);
+			if (i > 0) {
+				json.append(',');
+			}
+			json.append('{');
+			json.append("\"name\":\"").append(json(vector.getName())).append("\",");
+			json.append("\"category\":\"").append(json(vector.getCategory())).append("\",");
+			json.append("\"rfc\":\"").append(json(vector.getRfc())).append("\",");
+			json.append("\"description\":\"").append(json(vector.getDescription())).append("\",");
+			json.append("\"bytes\":").append(vector.size());
+			json.append('}');
+		}
+		json.append("]}");
+		return json.toString();
 	}
 
 	public synchronized void stop() {
@@ -126,7 +177,7 @@ public class BrowserDashboardServer {
 		@Override
 		public void handle(HttpExchange exchange) throws IOException {
 			List<FuzzerTestStatus> statuses = FuzzerStatusRegistry.getInstance().snapshot();
-			List<String> logs = FuzzerStatusRegistry.getInstance().logSnapshot();
+			List<String> logs = FuzzerStatusRegistry.getInstance().serverResponseLogSnapshot();
 			TLSController controller = TLSController.getInstance();
 			StringBuilder json = new StringBuilder();
 			json.append("{\"generatedAt\":\"").append(Instant.now()).append("\",");
@@ -134,10 +185,13 @@ public class BrowserDashboardServer {
 			json.append("\"host\":\"").append(json(controller.getTargetHost())).append("\",");
 			json.append("\"port\":").append(controller.getTargetPort()).append(',');
 			json.append("\"suite\":\"").append(controller.getActiveSuite()).append("\",");
-			Path latestReportPath = TLSReportCreator.getInstance().latestReportPath();
-			json.append("\"latestReport\":\"").append(json(latestReportPath == null ? "" : latestReportPath.toString()))
-					.append("\",");
-			json.append("\"tests\":[");
+			json.append("\"hiddenNoResponseCount\":").append(FuzzerStatusRegistry.getInstance().noResponseLogCount()).append(',');
+				Path latestReportPath = TLSReportCreator.getInstance().latestReportPath();
+				json.append("\"latestReport\":\"").append(json(latestReportPath == null ? "" : latestReportPath.toString()))
+						.append("\",");
+				appendFlowSteps(json);
+				json.append(',');
+				json.append("\"tests\":[");
 			for (int i = 0; i < statuses.size(); i++) {
 				FuzzerTestStatus status = statuses.get(i);
 				if (i > 0) {
@@ -162,9 +216,45 @@ public class BrowserDashboardServer {
 				json.append("\"").append(json(logs.get(i))).append("\"");
 			}
 			json.append("]}");
-			send(exchange, 200, "application/json", json.toString());
+				send(exchange, 200, "application/json", json.toString());
+			}
+
+			private static void appendFlowSteps(StringBuilder json) {
+				Map<String, TLSHandshakeStepStatus> runtime = new java.util.HashMap<>();
+				for (TLSHandshakeStepStatus status : FuzzerStatusRegistry.getInstance().handshakeStepSnapshot()) {
+					runtime.put(status.key(), status);
+				}
+				json.append("\"flowSteps\":[");
+				List<TLSHandshakeStep> steps = TLSHandshakeFlows.all();
+				for (int i = 0; i < steps.size(); i++) {
+					TLSHandshakeStep step = steps.get(i);
+					TLSHandshakeStepStatus status = runtime.get(TLSHandshakeStepStatus.key(step.protocol(), step.sequence()));
+					if (i > 0) {
+						json.append(',');
+					}
+					json.append('{');
+					json.append("\"protocol\":\"").append(json(step.protocol())).append("\",");
+					json.append("\"sequence\":").append(step.sequence()).append(',');
+					json.append("\"actor\":\"").append(json(step.actor())).append("\",");
+					json.append("\"category\":\"").append(json(step.category())).append("\",");
+					json.append("\"title\":\"").append(json(step.title())).append("\",");
+					json.append("\"description\":\"").append(json(step.description())).append("\",");
+					json.append("\"color\":\"").append(json(step.color())).append("\",");
+					json.append("\"protocolColor\":\"").append(json(TLSHandshakeFlows.protocolColor(step.protocol()))).append("\",");
+					json.append("\"implemented\":").append(step.implemented()).append(',');
+					json.append("\"state\":\"")
+							.append(status == null ? (step.implemented() ? "READY" : "PLANNED") : status.state()).append("\",");
+					json.append("\"job\":\"").append(json(status == null ? "" : status.jobName())).append("\",");
+					json.append("\"iteration\":").append(status == null ? 0 : status.iteration()).append(',');
+					json.append("\"requestBytes\":").append(status == null ? 0 : status.requestBytes()).append(',');
+					json.append("\"responseBytes\":").append(status == null ? 0 : status.responseBytes()).append(',');
+					json.append("\"responseSummary\":\"").append(json(status == null ? "" : status.responseSummary()))
+							.append("\"");
+					json.append('}');
+				}
+				json.append("]");
+			}
 		}
-	}
 
 	private static class StartHandler implements HttpHandler {
 
@@ -200,39 +290,7 @@ public class BrowserDashboardServer {
 
 		@Override
 		public void handle(HttpExchange exchange) throws IOException {
-			List<TLSFuzzVector> vectors = TLSProtocolDataGenerator.getInstance().createRfcByteStreamVectors();
-			Map<String, Integer> categories = new java.util.LinkedHashMap<>();
-			for (TLSFuzzVector vector : vectors) {
-				categories.merge(vector.getCategory(), 1, Integer::sum);
-			}
-			StringBuilder json = new StringBuilder();
-			json.append("{\"count\":").append(vectors.size()).append(",\"categories\":[");
-			int categoryIndex = 0;
-			for (Map.Entry<String, Integer> entry : categories.entrySet()) {
-				if (categoryIndex++ > 0) {
-					json.append(',');
-				}
-				json.append('{');
-				json.append("\"name\":\"").append(json(entry.getKey())).append("\",");
-				json.append("\"count\":").append(entry.getValue());
-				json.append('}');
-			}
-			json.append("],\"vectors\":[");
-			for (int i = 0; i < vectors.size(); i++) {
-				TLSFuzzVector vector = vectors.get(i);
-				if (i > 0) {
-					json.append(',');
-				}
-				json.append('{');
-				json.append("\"name\":\"").append(json(vector.getName())).append("\",");
-				json.append("\"category\":\"").append(json(vector.getCategory())).append("\",");
-				json.append("\"rfc\":\"").append(json(vector.getRfc())).append("\",");
-				json.append("\"description\":\"").append(json(vector.getDescription())).append("\",");
-				json.append("\"bytes\":").append(vector.size());
-				json.append('}');
-			}
-			json.append("]}");
-			send(exchange, 200, "application/json", json.toString());
+			send(exchange, 200, "application/json", vectorCatalogJson());
 		}
 	}
 
@@ -253,6 +311,28 @@ public class BrowserDashboardServer {
 						FuzzerStatusRegistry.getInstance().logSnapshot());
 			}
 			sendFile(exchange, reportPath);
+		}
+	}
+
+	private static class StaticPicsHandler implements HttpHandler {
+
+		private static final Path PICS_ROOT = Path.of("pics").toAbsolutePath().normalize();
+
+		@Override
+		public void handle(HttpExchange exchange) throws IOException {
+			if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+				send(exchange, 405, "application/json", "{\"error\":\"GET required\"}");
+				return;
+			}
+			String requestPath = URLDecoder.decode(exchange.getRequestURI().getPath(), StandardCharsets.UTF_8);
+			String fileName = requestPath.substring("/pics/".length());
+			Path filePath = PICS_ROOT.resolve(fileName).normalize();
+			if (!filePath.startsWith(PICS_ROOT) || !Files.isRegularFile(filePath)) {
+				send(exchange, 404, "text/plain; charset=utf-8", "not found");
+				return;
+			}
+			String contentType = fileName.toLowerCase().endsWith(".png") ? "image/png" : "application/octet-stream";
+			send(exchange, 200, contentType, Files.readAllBytes(filePath));
 		}
 	}
 
@@ -332,16 +412,18 @@ public class BrowserDashboardServer {
 					<style>
 						:root { color-scheme: dark; font-family: \"JetBrains Mono\", \"Cascadia Mono\", \"SFMono-Regular\", Consolas, monospace; }
 						* { box-sizing: border-box; }
-						body {
-							margin: 0;
-							min-height: 100vh;
-							background:
-								linear-gradient(rgba(0, 255, 136, .035) 1px, transparent 1px),
-								linear-gradient(90deg, rgba(0, 255, 136, .035) 1px, transparent 1px),
-								#020604;
-							background-size: 18px 18px;
-							color: #8dffb2;
-							text-shadow: 0 0 8px rgba(37, 255, 124, .35);
+							body {
+								margin: 0;
+								min-height: 100vh;
+								background:
+									linear-gradient(rgba(2, 6, 4, .72), rgba(2, 6, 4, .86)),
+									url('/pics/CS_v.png') center center / cover fixed no-repeat,
+									linear-gradient(rgba(0, 255, 136, .035) 1px, transparent 1px),
+									linear-gradient(90deg, rgba(0, 255, 136, .035) 1px, transparent 1px),
+									#020604;
+								background-size: auto, cover, 18px 18px, 18px 18px, auto;
+								color: #8dffb2;
+								text-shadow: 0 0 8px rgba(37, 255, 124, .35);
 						}
 						body::before {
 							content: \"\";
@@ -387,9 +469,28 @@ public class BrowserDashboardServer {
 						section { overflow: auto; }
 						progress { width: 130px; height: 10px; accent-color: #22c55e; }
 						.badge { border: 1px solid #22c55e; border-radius: 3px; padding: 2px 7px; color: #8dffb2; background: rgba(34,197,94,.12); }
-						.SUCCESS { color: #d9ff5f; border-color: #d9ff5f; }
-						.FAILED { color: #ff6b6b; border-color: #ff6b6b; }
-						.RUNNING { color: #67e8f9; border-color: #67e8f9; }
+							.EXECUTED { color: #d9ff5f; border-color: #d9ff5f; }
+							.FAILED { color: #ff6b6b; border-color: #ff6b6b; }
+							.RUNNING { color: #67e8f9; border-color: #67e8f9; }
+							.flow-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 14px; }
+							.flow-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-bottom: 1px solid rgba(34, 197, 94, .22); }
+							.flow-title { color: #d9ff5f; font-weight: 700; }
+							.legend { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 12px; border-bottom: 1px solid rgba(34, 197, 94, .22); }
+							.legend-item, .flow-status { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+							.swatch { width: 11px; height: 11px; border-radius: 2px; border: 1px solid rgba(255,255,255,.35); }
+							.flow-list { display: grid; gap: 8px; padding: 12px; max-height: 430px; overflow: auto; }
+							.flow-step { border-left: 5px solid var(--step-color); background: rgba(255,255,255,.035); padding: 8px 10px; display: grid; gap: 4px; }
+							.flow-step strong { color: #eaff8f; font-size: 12px; }
+							.flow-step small { color: #8dffb2; line-height: 1.35; }
+							.flow-step.TESTING { outline: 1px solid #d9ff5f; background: rgba(217,255,95,.09); }
+							.flow-step.OBSERVED { background: rgba(103,232,249,.08); }
+							.flow-step.PLANNED { opacity: .68; }
+						.flow-meta { color: #67e8f9; font-size: 11px; }
+						.agent-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; padding: 12px; }
+						.agent-item { border-left: 4px solid #67e8f9; background: rgba(255,255,255,.035); padding: 8px 10px; display: grid; gap: 4px; }
+						.agent-item span { color: #65d98b; font-size: 11px; text-transform: uppercase; }
+						.agent-item strong { color: #d9ff5f; font-size: 13px; word-break: break-word; }
+						.agent-response { margin: 0; padding: 12px; max-height: 150px; overflow: auto; white-space: pre-wrap; color: #67e8f9; font-size: 12px; border-top: 1px solid rgba(34, 197, 94, .22); }
 						.note { color: #65d98b; padding: 10px; font-size: 12px; border-bottom: 1px solid rgba(34, 197, 94, .22); }
 						.log-view { margin: 0; padding: 12px; max-height: 260px; overflow: auto; white-space: pre-wrap; color: #67e8f9; font-size: 12px; }
 						.matrix-cell::before { content: \"[\"; color: #d9ff5f; }
@@ -399,7 +500,7 @@ public class BrowserDashboardServer {
 				<body>
 					<header>
 						<h1>TLS Fuzzer Dashboard</h1>
-						<a class=\"brand-link\" href=\"https://cyberswor.tech\" target=\"_blank\" rel=\"noopener\">https://cyberswor.tech</a>
+						<a class=\"brand-link\" href=\"https://cybersword.tech\" target=\"_blank\" rel=\"noopener\">https://cybersword.tech</a>
 					</header>
 					<main>
 						<section class=\"summary\">
@@ -419,15 +520,51 @@ public class BrowserDashboardServer {
 							<a class=\"button-link\" href=\"/api/report\">PDF Report</a>
 							<button class=\"stop\" onclick=\"stopTests()\">End Tests</button>
 						</section>
-						<section class=\"terminal\">
-							<table>
-								<thead><tr><th>Test</th><th>State</th><th>Progress</th><th>Completed</th><th>Message</th></tr></thead>
-								<tbody id=\"statusRows\"></tbody>
-							</table>
-						</section>
-						<section class=\"terminal\">
-							<div class=\"note\">log view</div>
-							<pre class=\"log-view\" id=\"logRows\"></pre>
+							<section class=\"terminal\">
+								<table>
+									<thead><tr><th>Test</th><th>State</th><th>Progress</th><th>Completed</th><th>Message</th></tr></thead>
+									<tbody id=\"statusRows\"></tbody>
+								</table>
+							</section>
+							<section class=\"flow-grid\">
+								<div class=\"terminal\">
+									<div class=\"flow-header\"><span class=\"flow-title\">TLS 1.3 protocol flow</span><span class=\"flow-status\"><span class=\"swatch\" style=\"background:#fb7185\"></span>modern handshake</span></div>
+									<div class=\"legend\">
+										<span class=\"legend-item\"><span class=\"swatch\" style=\"background:#67e8f9\"></span>client</span>
+										<span class=\"legend-item\"><span class=\"swatch\" style=\"background:#f59e0b\"></span>server</span>
+										<span class=\"legend-item\"><span class=\"swatch\" style=\"background:#c084fc\"></span>key schedule</span>
+										<span class=\"legend-item\"><span class=\"swatch\" style=\"background:#22c55e\"></span>record wrapper</span>
+										<span class=\"legend-item\"><span class=\"swatch\" style=\"background:#d9ff5f\"></span>application</span>
+									</div>
+									<div class=\"flow-list\" id=\"tls13Flow\"></div>
+								</div>
+								<div class=\"terminal\">
+									<div class=\"flow-header\"><span class=\"flow-title\">TLS 1.2 protocol flow</span><span class=\"flow-status\"><span class=\"swatch\" style=\"background:#38bdf8\"></span>legacy handshake</span></div>
+									<div class=\"legend\">
+										<span class=\"legend-item\"><span class=\"swatch\" style=\"background:#67e8f9\"></span>client</span>
+										<span class=\"legend-item\"><span class=\"swatch\" style=\"background:#f59e0b\"></span>server</span>
+										<span class=\"legend-item\"><span class=\"swatch\" style=\"background:#c084fc\"></span>key schedule</span>
+										<span class=\"legend-item\"><span class=\"swatch\" style=\"background:#22c55e\"></span>record protection</span>
+										<span class=\"legend-item\"><span class=\"swatch\" style=\"background:#d9ff5f\"></span>application</span>
+									</div>
+									<div class=\"flow-list\" id=\"tls12Flow\"></div>
+								</div>
+							</section>
+							<section class=\"terminal\">
+								<div class=\"note\">TLS Agent view</div>
+								<div class=\"agent-grid\">
+									<div class=\"agent-item\"><span>Target</span><strong id=\"agentTarget\">-</strong></div>
+									<div class=\"agent-item\"><span>Suite</span><strong id=\"agentSuite\">-</strong></div>
+									<div class=\"agent-item\"><span>Agent State</span><strong id=\"agentState\">-</strong></div>
+									<div class=\"agent-item\"><span>Active Step</span><strong id=\"agentStep\">-</strong></div>
+									<div class=\"agent-item\"><span>Jobs</span><strong id=\"agentJobs\">-</strong></div>
+									<div class=\"agent-item\"><span>Server Responses</span><strong id=\"agentResponses\">0</strong></div>
+								</div>
+								<pre class=\"agent-response\" id=\"agentLatestResponse\">no server response yet</pre>
+							</section>
+							<section class=\"terminal\">
+								<div class=\"note\">log view</div>
+								<pre class=\"log-view\" id=\"logRows\"></pre>
 						</section>
 						<section class=\"terminal\">
 							<div class=\"note\">
@@ -454,17 +591,51 @@ public class BrowserDashboardServer {
 							document.getElementById('updated').textContent = new Date(data.generatedAt).toLocaleTimeString();
 							if (document.activeElement !== document.getElementById('host')) document.getElementById('host').value = data.host;
 							if (document.activeElement !== document.getElementById('port')) document.getElementById('port').value = data.port;
-							document.getElementById('logRows').textContent = (data.logs || []).slice(-120).join('\\n');
+							const visibleLogs = data.logs || [];
+							document.getElementById('logRows').textContent = visibleLogs.length
+								? visibleLogs.slice(-120).join('\\n')
+								: `No server responses with bytes yet. Hidden NO_RESPONSE entries: ${data.hiddenNoResponseCount || 0}. Full request and no-response evidence is still written to log files.`;
 							document.getElementById('statusRows').innerHTML = data.tests.map(t => `
 								<tr>
 									<td class=\"matrix-cell\">${t.name}</td>
 									<td><span class=\"badge ${t.state}\">${t.state}</span></td>
 									<td><progress max=\"100\" value=\"${t.progress}\"></progress> ${t.progress}%</td>
-									<td>${t.completed} / ${t.total}</td>
-									<td>${t.message || ''}</td>
-								</tr>`).join('');
-						}
-						async function refreshVectors() {
+										<td>${t.completed} / ${t.total}</td>
+										<td>${t.message || ''}</td>
+									</tr>`).join('');
+									renderFlow(data.flowSteps || []);
+									renderAgent(data);
+								}
+								function renderAgent(data) {
+									const tests = data.tests || [];
+									const logs = data.logs || [];
+									const activeSteps = (data.flowSteps || []).filter(step => step.state === 'TESTING' || step.state === 'OBSERVED');
+									const latestStep = activeSteps.length ? activeSteps[activeSteps.length - 1] : null;
+									const runningJobs = tests.filter(t => t.state === 'RUNNING').length;
+									const executedJobs = tests.filter(t => t.state === 'EXECUTED').length;
+									const failedJobs = tests.filter(t => t.state === 'FAILED').length;
+									document.getElementById('agentTarget').textContent = `${data.host}:${data.port}`;
+									document.getElementById('agentSuite').textContent = data.suite || '-';
+									document.getElementById('agentState').textContent = data.running ? 'RUNNING' : 'IDLE';
+									document.getElementById('agentStep').textContent = latestStep ? `${latestStep.protocol} ${latestStep.sequence}. ${latestStep.title}` : '-';
+									document.getElementById('agentJobs').textContent = `${tests.length} total | ${runningJobs} running | ${executedJobs} executed | ${failedJobs} failed`;
+									document.getElementById('agentResponses').textContent = `${logs.length} visible | ${data.hiddenNoResponseCount || 0} no response`;
+									document.getElementById('agentLatestResponse').textContent = logs.length ? logs[logs.length - 1] : 'no server responses with bytes yet';
+								}
+							function renderFlow(steps) {
+								renderFlowVersion('TLS 1.3', 'tls13Flow', steps);
+								renderFlowVersion('TLS 1.2', 'tls12Flow', steps);
+							}
+							function renderFlowVersion(protocol, targetId, steps) {
+								const filtered = steps.filter(step => step.protocol === protocol);
+								document.getElementById(targetId).innerHTML = filtered.map(step => `
+									<div class=\"flow-step ${step.state}\" style=\"--step-color:${step.color}\">
+										<strong>${step.sequence}. (${step.actor}) ${step.title}</strong>
+										<small>${step.description}</small>
+										<div class=\"flow-meta\">${step.category} | ${step.state}${step.job ? ` | ${step.job} #${step.iteration}` : ''}${step.responseSummary ? ` | ${step.responseSummary}` : ''}</div>
+									</div>`).join('');
+							}
+							async function refreshVectors() {
 							const response = await fetch('/api/vectors', { cache: 'no-store' });
 							vectorCatalog = await response.json();
 							document.getElementById('vectors').textContent = vectorCatalog.count;

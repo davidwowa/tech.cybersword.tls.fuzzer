@@ -4,8 +4,14 @@ import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import tech.cybersword.tls.fuzzer.util.LoggerUtil;
 
 public class KeyGenerator {
+
+	private static final Logger logger = LoggerUtil.getLogger(KeyGenerator.class.getName());
 
 	// TODO
 	public void generateKeyPair() {
@@ -16,8 +22,7 @@ public class KeyGenerator {
 			Key publicKey = kp.getPublic();
 			Key privateKey = kp.getPrivate();
 		} catch (NoSuchAlgorithmException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.log(Level.SEVERE, "Could not generate RSA key pair", e);
 		}
 	}
 }

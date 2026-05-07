@@ -65,13 +65,12 @@ public class CommonProperties {
             if (logger.isLoggable(Level.INFO)) {
                 logger.info(String.format("Load configurations from %s", path));
             }
-        } catch (Exception e) {
-            if (logger.isLoggable(Level.SEVERE)) {
-                logger.log(Level.SEVERE, String.format("Error by loading configurations from %s", path));
-            }
-            e.printStackTrace();
-        }
-    }
+	        } catch (Exception e) {
+	            if (logger.isLoggable(Level.SEVERE)) {
+	                logger.log(Level.SEVERE, String.format("Error by loading configurations from %s", path), e);
+	            }
+	        }
+	    }
 
     public static String getTlsHost() {
         return tlsHost;

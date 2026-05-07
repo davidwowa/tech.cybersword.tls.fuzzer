@@ -23,7 +23,22 @@ class FuzzerStatusRegistryTest {
 		registry.success("tls13");
 
 		FuzzerTestStatus completed = registry.snapshot().get(0);
-		assertEquals(State.SUCCESS, completed.getState());
+		assertEquals(State.EXECUTED, completed.getState());
 		assertEquals(100, completed.getProgressPercentage());
+	}
+
+	@Test
+	void doesNotOverwriteFailedStatusWithExecuted() {
+		FuzzerStatusRegistry registry = FuzzerStatusRegistry.getInstance();
+		registry.clear();
+
+		registry.start("tls13", 10);
+		registry.update("tls13", 4, "40 %");
+		registry.failed("tls13", new IllegalStateException("boom"));
+		registry.success("tls13");
+
+		FuzzerTestStatus completed = registry.snapshot().get(0);
+		assertEquals(State.FAILED, completed.getState());
+		assertEquals(40, completed.getProgressPercentage());
 	}
 }

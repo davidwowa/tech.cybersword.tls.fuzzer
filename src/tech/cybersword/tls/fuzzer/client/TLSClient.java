@@ -72,14 +72,13 @@ public class TLSClient {
 
 			return arr;
 		} catch (Exception e) {
-			if (logger.isLoggable(Level.SEVERE)) {
-				logger.log(Level.SEVERE,
-						String.format("Error on \nsend(%b)/receive(%b) \n" + //
-								"from %s:%s message %s", send, receive, host, port,
-								StringUtil.getInstance().toHexString(message)));
+				if (logger.isLoggable(Level.SEVERE)) {
+					logger.log(Level.SEVERE,
+							String.format("Error on \nsend(%b)/receive(%b) \n" + //
+									"from %s:%s message %s", send, receive, host, port,
+									StringUtil.getInstance().toHexString(message)), e);
+				}
 			}
-			e.printStackTrace();
-		}
 		return new byte[0];
 		// Socket socket = new Socket(host, port);
 		// OutputStream out = socket.getOutputStream();

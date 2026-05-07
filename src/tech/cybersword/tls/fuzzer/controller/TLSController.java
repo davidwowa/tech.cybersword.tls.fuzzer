@@ -16,6 +16,8 @@ import tech.cybersword.tls.fuzzer.common.CommonProperties;
 import tech.cybersword.tls.fuzzer.dashboard.BrowserDashboardServer;
 import tech.cybersword.tls.fuzzer.dashboard.FuzzerStatusRegistry;
 import tech.cybersword.tls.fuzzer.dashboard.TLSReportCreator;
+import tech.cybersword.tls.fuzzer.dashboard.TLSHandshakeFlows;
+import tech.cybersword.tls.fuzzer.dashboard.TLSHandshakeStep;
 import tech.cybersword.tls.fuzzer.generator.TLSFuzzVector;
 import tech.cybersword.tls.fuzzer.generator.TLSProtocolDataGenerator;
 import tech.cybersword.tls.fuzzer.generator.TLS12TestDataGenerator;
@@ -179,18 +181,17 @@ public class TLSController {
 			for (int i = 0; i < vectors.size() && !TLSController.getInstance().isStopRequested(); i++) {
 				TLSFuzzVector vector = vectors.get(i);
 				try {
-					byte[] response = client.sendTLSMessage(tlsHost, tlsPort, vector.getData());
+						byte[] response = sendAndRecord(client, jobName, null, i + 1, vector.getData(), vector.getName());
 					if (response.length != 0 && logger.isLoggable(Level.INFO)) {
 						logger.info(vector.getName() + " response " + StringUtil.getInstance().toHexString(response));
 					}
 					showStatus(jobName, vectors.size(), i + 1, lastStatus, vector.getName());
-				} catch (Exception e) {
-					if (logger.isLoggable(Level.SEVERE)) {
-						logger.severe(String.format("%s: error on vector %s %s", jobName, vector.getName(), e));
+					} catch (Exception e) {
+						if (logger.isLoggable(Level.SEVERE)) {
+							logger.log(Level.SEVERE, String.format("%s: error on vector %s", jobName, vector.getName()), e);
+						}
+						FuzzerStatusRegistry.getInstance().failed(jobName, e);
 					}
-					e.printStackTrace();
-					FuzzerStatusRegistry.getInstance().failed(jobName, e);
-				}
 			}
 			FuzzerStatusRegistry.getInstance().success(jobName);
 			logger.info(String.format("%s: end after %s ms", jobName, System.currentTimeMillis() - startTime));
@@ -205,22 +206,21 @@ public class TLSController {
 			FuzzerStatusRegistry.getInstance().start(jobName, amountTLSRequests);
 			for (int i = 0; i < amountTLSRequests && !TLSController.getInstance().isStopRequested(); i++) {
 				try {
-					byte[] response = client.sendTLSMessage(tlsHost, tlsPort,
-							RandomUtil.getInstance()
-									.generateRandomArray(CommonProperties.getInstance().getRandomArraySize()));
+						byte[] payload = RandomUtil.getInstance()
+								.generateRandomArray(CommonProperties.getInstance().getRandomArraySize());
+						byte[] response = sendAndRecord(client, jobName, null, i + 1, payload, "fixed random payload");
 					if (response.length != 0 && logger.isLoggable(Level.INFO)) {
 						logger.info(StringUtil.getInstance().toHexString(response));
 					}
 					showStatus(jobName, amountTLSRequests, i + 1, lastStatus);
 					// TODO get status from ExecutorService is maybe better way...
-				} catch (Exception e) {
-					if (logger.isLoggable(Level.SEVERE)) {
-						logger.severe(
-								String.format("simpleTLSRandomFixArray: error tls fuzzer test number %s %s", i, e));
+					} catch (Exception e) {
+						if (logger.isLoggable(Level.SEVERE)) {
+							logger.log(Level.SEVERE,
+									String.format("simpleTLSRandomFixArray: error tls fuzzer test number %s", i), e);
+						}
+						FuzzerStatusRegistry.getInstance().failed(jobName, e);
 					}
-					e.printStackTrace();
-					FuzzerStatusRegistry.getInstance().failed(jobName, e);
-				}
 			}
 			FuzzerStatusRegistry.getInstance().success(jobName);
 			logger.info(
@@ -239,20 +239,20 @@ public class TLSController {
 					int randomNumber = RandomUtil.getInstance().generateRandomNumber(
 							CommonProperties.getInstance().getRandomMinArraySize(),
 							CommonProperties.getInstance().getRandomMaxArraySize());
-					byte[] response = client.sendTLSMessage(tlsHost, tlsPort,
-							RandomUtil.getInstance().generateRandomArray(randomNumber));
+						byte[] payload = RandomUtil.getInstance().generateRandomArray(randomNumber);
+						byte[] response = sendAndRecord(client, jobName, null, i + 1, payload, "variable random payload");
 					if (response.length != 0 && logger.isLoggable(Level.INFO)) {
 						logger.info(StringUtil.getInstance().toHexString(response));
 					}
 					showStatus(jobName, amountTLSRequests, i + 1, lastStatus);
 					// TODO get status from ExecutorService is maybe better way...
-				} catch (Exception e) {
-					if (logger.isLoggable(Level.SEVERE)) {
-						logger.severe(String.format("simpleTLSRandomArray: error tls fuzzer test number %s %s", i, e));
+					} catch (Exception e) {
+						if (logger.isLoggable(Level.SEVERE)) {
+							logger.log(Level.SEVERE, String.format("simpleTLSRandomArray: error tls fuzzer test number %s", i),
+									e);
+						}
+						FuzzerStatusRegistry.getInstance().failed(jobName, e);
 					}
-					e.printStackTrace();
-					FuzzerStatusRegistry.getInstance().failed(jobName, e);
-				}
 			}
 			FuzzerStatusRegistry.getInstance().success(jobName);
 			logger.info(String.format("simpleTLSRandomArray: end after %s ms", System.currentTimeMillis() - startTime));
@@ -267,20 +267,21 @@ public class TLSController {
 			FuzzerStatusRegistry.getInstance().start(jobName, amountTLSRequests);
 			for (int i = 0; i < amountTLSRequests && !TLSController.getInstance().isStopRequested(); i++) {
 				try {
-					byte[] response = client.sendTLSMessage(tlsHost, tlsPort,
-							TLS12TestDataGenerator.getInstance().generateExampleTLSHello());
+						byte[] payload = TLS12TestDataGenerator.getInstance().generateExampleTLSHello();
+						byte[] response = sendAndRecord(client, jobName, TLSHandshakeFlows.tls12ClientHello(), i + 1, payload,
+								"TLS 1.2 ClientHello");
 					if (response.length != 0 && logger.isLoggable(Level.INFO)) {
 						logger.info(StringUtil.getInstance().toHexString(response));
 					}
 					showStatus(jobName, amountTLSRequests, i + 1, lastStatus);
 					// TODO get status from ExecutorService is maybe better way...
-				} catch (Exception e) {
-					if (logger.isLoggable(Level.SEVERE)) {
-						logger.severe(String.format("simpleTLS12HelloTest: error tls fuzzer test number %s %s", i, e));
+					} catch (Exception e) {
+						if (logger.isLoggable(Level.SEVERE)) {
+							logger.log(Level.SEVERE, String.format("simpleTLS12HelloTest: error tls fuzzer test number %s", i),
+									e);
+						}
+						FuzzerStatusRegistry.getInstance().failed(jobName, e);
 					}
-					e.printStackTrace();
-					FuzzerStatusRegistry.getInstance().failed(jobName, e);
-				}
 			}
 			FuzzerStatusRegistry.getInstance().success(jobName);
 			logger.info(String.format("simpleTLS12HelloTest: end after %s ms", System.currentTimeMillis() - startTime));
@@ -295,21 +296,21 @@ public class TLSController {
 			FuzzerStatusRegistry.getInstance().start(jobName, amountTLSRequests);
 			for (int i = 0; i < amountTLSRequests && !TLSController.getInstance().isStopRequested(); i++) {
 				try {
-					byte[] response = client.sendTLSMessage(tlsHost, tlsPort,
-							TLS12TestDataGenerator.getInstance().generateExampleTLSHelloRandomExtensionData());
+						byte[] payload = TLS12TestDataGenerator.getInstance().generateExampleTLSHelloRandomExtensionData();
+						byte[] response = sendAndRecord(client, jobName, TLSHandshakeFlows.tls12ClientHello(), i + 1, payload,
+								"TLS 1.2 ClientHello with random extension data");
 					if (response.length != 0 && logger.isLoggable(Level.INFO)) {
 						logger.info(StringUtil.getInstance().toHexString(response));
 					}
 					showStatus(jobName, amountTLSRequests, i + 1, lastStatus);
 					// TODO get status from ExecutorService is maybe better way...
-				} catch (Exception e) {
-					if (logger.isLoggable(Level.SEVERE)) {
-						logger.severe(String.format(
-								"simpleTLS12HelloRandomExtensionTest: error tls fuzzer test number %s %s", i, e));
+					} catch (Exception e) {
+						if (logger.isLoggable(Level.SEVERE)) {
+							logger.log(Level.SEVERE, String.format(
+									"simpleTLS12HelloRandomExtensionTest: error tls fuzzer test number %s", i), e);
+						}
+						FuzzerStatusRegistry.getInstance().failed(jobName, e);
 					}
-					e.printStackTrace();
-					FuzzerStatusRegistry.getInstance().failed(jobName, e);
-				}
 			}
 			FuzzerStatusRegistry.getInstance().success(jobName);
 			logger.info(String.format("simpleTLS12HelloRandomExtensionTest: end after %s ms",
@@ -325,20 +326,21 @@ public class TLSController {
 			FuzzerStatusRegistry.getInstance().start(jobName, amountTLSRequests);
 			for (int i = 0; i < amountTLSRequests && !TLSController.getInstance().isStopRequested(); i++) {
 				try {
-					byte[] response = client.sendTLSMessage(tlsHost, tlsPort,
-							TLS13TestDataGenerator.getInstance().generateExampleTLSHello());
+						byte[] payload = TLS13TestDataGenerator.getInstance().generateExampleTLSHello();
+						byte[] response = sendAndRecord(client, jobName, TLSHandshakeFlows.tls13ClientHello(), i + 1, payload,
+								"TLS 1.3 ClientHello");
 					if (response.length != 0 && logger.isLoggable(Level.INFO)) {
 						logger.info(StringUtil.getInstance().toHexString(response));
 					}
 					showStatus(jobName, amountTLSRequests, i + 1, lastStatus);
 					// TODO get status from ExecutorService is maybe better way...
-				} catch (Exception e) {
-					if (logger.isLoggable(Level.SEVERE)) {
-						logger.severe(String.format("simpleTLS13HelloTest: error tls fuzzer test number %s %s", i, e));
+					} catch (Exception e) {
+						if (logger.isLoggable(Level.SEVERE)) {
+							logger.log(Level.SEVERE, String.format("simpleTLS13HelloTest: error tls fuzzer test number %s", i),
+									e);
+						}
+						FuzzerStatusRegistry.getInstance().failed(jobName, e);
 					}
-					e.printStackTrace();
-					FuzzerStatusRegistry.getInstance().failed(jobName, e);
-				}
 			}
 			FuzzerStatusRegistry.getInstance().success(jobName);
 			logger.info(String.format("simpleTLS13HelloTest: end after %s ms",
@@ -354,20 +356,21 @@ public class TLSController {
 			FuzzerStatusRegistry.getInstance().start(jobName, amountTLSRequests);
 			for (int i = 0; i < amountTLSRequests && !TLSController.getInstance().isStopRequested(); i++) {
 				try {
-					byte[] response = client.sendTLSMessage(tlsHost, tlsPort,
-							TLS13TestDataGenerator.getInstance().generateExampleTLSHelloRandomExtensionData());
+						byte[] payload = TLS13TestDataGenerator.getInstance().generateExampleTLSHelloRandomExtensionData();
+						byte[] response = sendAndRecord(client, jobName, TLSHandshakeFlows.tls13ClientHello(), i + 1, payload,
+								"TLS 1.3 ClientHello with random extension data");
 					if (response.length != 0 && logger.isLoggable(Level.INFO)) {
 						logger.info(StringUtil.getInstance().toHexString(response));
 					}
 					showStatus(jobName, amountTLSRequests, i + 1, lastStatus);
-				} catch (Exception e) {
-					if (logger.isLoggable(Level.SEVERE)) {
-						logger.severe(String
-								.format("simpleTLS13HelloRandomExtensionTest: error tls fuzzer test number %s %s", i, e));
+					} catch (Exception e) {
+						if (logger.isLoggable(Level.SEVERE)) {
+							logger.log(Level.SEVERE,
+									String.format("simpleTLS13HelloRandomExtensionTest: error tls fuzzer test number %s", i),
+									e);
+						}
+						FuzzerStatusRegistry.getInstance().failed(jobName, e);
 					}
-					e.printStackTrace();
-					FuzzerStatusRegistry.getInstance().failed(jobName, e);
-				}
 			}
 			FuzzerStatusRegistry.getInstance().success(jobName);
 			logger.info(String.format("simpleTLS13HelloRandomExtensionTest: end after %s ms",
@@ -383,20 +386,21 @@ public class TLSController {
 			FuzzerStatusRegistry.getInstance().start(jobName, amountTLSRequests);
 			for (int i = 0; i < amountTLSRequests && !TLSController.getInstance().isStopRequested(); i++) {
 				try {
-					byte[] response = client.sendTLSMessage(tlsHost, tlsPort,
-							TLS13TestDataGenerator.getInstance().generateExampleTLSRHelloRandomExtensionData());
+						byte[] payload = TLS13TestDataGenerator.getInstance().generateExampleTLSRHelloRandomExtensionData();
+						byte[] response = sendAndRecord(client, jobName, TLSHandshakeFlows.tls13ClientHello(), i + 1, payload,
+								"TLS 1.3 randomized ClientHello variant");
 					if (response.length != 0 && logger.isLoggable(Level.INFO)) {
 						logger.info(StringUtil.getInstance().toHexString(response));
 					}
 					showStatus(jobName, amountTLSRequests, i + 1, lastStatus);
-				} catch (Exception e) {
-					if (logger.isLoggable(Level.SEVERE)) {
-						logger.severe(String.format(
-								"simpleTLS13RHelloRandomExtensionTest: error tls fuzzer test number %s %s", i, e));
+					} catch (Exception e) {
+						if (logger.isLoggable(Level.SEVERE)) {
+							logger.log(Level.SEVERE,
+									String.format("simpleTLS13RHelloRandomExtensionTest: error tls fuzzer test number %s", i),
+									e);
+						}
+						FuzzerStatusRegistry.getInstance().failed(jobName, e);
 					}
-					e.printStackTrace();
-					FuzzerStatusRegistry.getInstance().failed(jobName, e);
-				}
 			}
 			FuzzerStatusRegistry.getInstance().success(jobName);
 			logger.info(String.format("simpleTLS13RHelloRandomExtensionTest: end after %s ms",
@@ -435,6 +439,98 @@ public class TLSController {
 			FuzzerStatusRegistry.getInstance().addLog("pdf report failed: " + e.getMessage());
 		}
 		FuzzerStatusRegistry.getInstance().addLog("test run ended; browser dashboard remains active");
+	}
+
+	private static byte[] sendAndRecord(TLSClient client, String jobName, TLSHandshakeStep step, int iteration,
+			byte[] payload, String label) {
+		String requestHex = StringUtil.getInstance().toHexString(payload);
+		String payloadLog = String.format("Request Payload job=%s iteration=%s label=%s bytes=%s hex=%s", jobName,
+				iteration, label, payload.length, requestHex);
+		FuzzerStatusRegistry.getInstance().addLog(payloadLog);
+		if (logger.isLoggable(Level.INFO)) {
+			logger.info(payloadLog);
+		}
+		if (step != null) {
+			FuzzerStatusRegistry.getInstance().recordHandshakeStep(step, "TESTING", jobName, iteration, payload.length, 0,
+					"request generated");
+		}
+		byte[] response = client.sendTLSMessage(tlsHost, tlsPort, payload);
+		String responseHex = StringUtil.getInstance().toHexString(response);
+		String responseSummary = classifyResponse(response);
+		String responseLog = String.format(
+				"Server Response job=%s iteration=%s label=%s bytes=%s classification=%s hex=%s", jobName, iteration,
+				label, response.length, responseSummary, responseHex);
+		FuzzerStatusRegistry.getInstance().addLog(responseLog);
+		if (logger.isLoggable(Level.INFO)) {
+			logger.info(responseLog);
+		}
+		if (step != null) {
+			FuzzerStatusRegistry.getInstance().recordHandshakeStep(step, "OBSERVED", jobName, iteration, payload.length,
+					response.length, responseSummary);
+		}
+		return response;
+	}
+
+	private static String classifyResponse(byte[] response) {
+		if (response.length == 0) {
+			return "NO_RESPONSE";
+		}
+		if (response.length < 5) {
+			return "MALFORMED_TLS_RECORD bytes=" + response.length;
+		}
+		int contentType = response[0] & 0xff;
+		int recordLength = ((response[3] & 0xff) << 8) | (response[4] & 0xff);
+		if (recordLength + 5 > response.length) {
+			return "TRUNCATED_TLS_RECORD declared=" + recordLength + " bytes=" + response.length;
+		}
+		return switch (contentType) {
+		case 20 -> "CHANGE_CIPHER_SPEC bytes=" + response.length;
+		case 21 -> classifyAlert(response);
+		case 22 -> "HANDSHAKE_RECORD bytes=" + response.length;
+		case 23 -> "APPLICATION_DATA bytes=" + response.length;
+		default -> "UNKNOWN_TLS_RECORD type=" + contentType + " bytes=" + response.length;
+		};
+	}
+
+	private static String classifyAlert(byte[] response) {
+		if (response.length < 7) {
+			return "TLS_ALERT malformed bytes=" + response.length;
+		}
+		int level = response[5] & 0xff;
+		int description = response[6] & 0xff;
+		String levelName = level == 1 ? "warning" : level == 2 ? "fatal" : "level-" + level;
+		return "TLS_ALERT " + levelName + " " + alertName(description) + "(" + description + ")";
+	}
+
+	private static String alertName(int description) {
+		return switch (description) {
+		case 0 -> "close_notify";
+		case 10 -> "unexpected_message";
+		case 20 -> "bad_record_mac";
+		case 22 -> "record_overflow";
+		case 40 -> "handshake_failure";
+		case 42 -> "bad_certificate";
+		case 43 -> "unsupported_certificate";
+		case 44 -> "certificate_revoked";
+		case 45 -> "certificate_expired";
+		case 46 -> "certificate_unknown";
+		case 47 -> "illegal_parameter";
+		case 48 -> "unknown_ca";
+		case 49 -> "access_denied";
+		case 50 -> "decode_error";
+		case 51 -> "decrypt_error";
+		case 70 -> "protocol_version";
+		case 71 -> "insufficient_security";
+		case 80 -> "internal_error";
+		case 86 -> "inappropriate_fallback";
+		case 90 -> "user_canceled";
+		case 109 -> "missing_extension";
+		case 110 -> "unsupported_extension";
+		case 112 -> "unrecognized_name";
+		case 116 -> "certificate_required";
+		case 120 -> "no_application_protocol";
+		default -> "unknown_alert";
+		};
 	}
 
 	public static void showStatus(String name, int total, int part, AtomicInteger lastShowedNumber) {
