@@ -5,7 +5,7 @@ public class FuzzerTestStatus {
 	public enum State {
 		PENDING,
 		RUNNING,
-		SUCCESS,
+		EXECUTED,
 		FAILED
 	}
 
@@ -68,7 +68,7 @@ public class FuzzerTestStatus {
 	}
 
 	public FuzzerTestStatus withState(State state, String message) {
-		int completedCount = state == State.SUCCESS ? total : completed;
+		int completedCount = state == State.EXECUTED ? total : completed;
 		return new FuzzerTestStatus(name, total, completedCount, state, startedAt, System.currentTimeMillis(), message);
 	}
 }

@@ -5,8 +5,10 @@ MAVEN_BIN="${MAVEN_BIN:-/home/david/progs/apache-maven-3.9.11/bin/mvn}"
 JAR_PATH="${JAR_PATH:-target/tech.cybersword.tls.fuzzer-1.0.0-SNAPSHOT.jar}"
 TLS_PORT="${TLS_PORT:-31337}"
 LOG_DIR="${LOG_DIR:-log}"
+REPORT_DIR="${REPORT_DIR:-reports}"
 START_LOCAL_SERVER=false
 SKIP_BUILD=false
+CLEAN_OUTPUT=true
 
 usage() {
   cat <<'USAGE'
@@ -15,6 +17,7 @@ Usage: ./start.sh [options]
 Options:
   --with-local-server   Start an OpenSSL TLS server on localhost:31337 before the fuzzer.
   --skip-build          Start the existing jar without running Maven package.
+  --keep-output         Do not clear log/ and reports/ before starting.
   --help                Show this help.
 
 Environment:
@@ -22,6 +25,7 @@ Environment:
   JAR_PATH=target/...jar    Jar to execute after build.
   TLS_PORT=31337           Local OpenSSL server port when --with-local-server is used.
   LOG_DIR=log              Directory for generated logs.
+  REPORT_DIR=reports       Directory for generated reports.
 
 Dashboard:
   http://localhost:8080/
@@ -36,6 +40,9 @@ while [[ $# -gt 0 ]]; do
     --skip-build)
       SKIP_BUILD=true
       ;;
+    --keep-output)
+      CLEAN_OUTPUT=false
+      ;;
     --help|-h)
       usage
       exit 0
@@ -49,7 +56,23 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-mkdir -p "$LOG_DIR"
+safe_clear_dir() {
+  local dir="$1"
+  if [[ -z "$dir" || "$dir" == "/" || "$dir" == "." || "$dir" == ".." ]]; then
+    echo "Refusing to clear unsafe directory: $dir" >&2
+    exit 1
+  fi
+  mkdir -p "$dir"
+  find "$dir" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+}
+
+if [[ "$CLEAN_OUTPUT" == "true" ]]; then
+  echo "Clearing runtime output directories: $LOG_DIR $REPORT_DIR"
+  safe_clear_dir "$LOG_DIR"
+  safe_clear_dir "$REPORT_DIR"
+else
+  mkdir -p "$LOG_DIR" "$REPORT_DIR"
+fi
 
 if [[ "$SKIP_BUILD" == "false" ]]; then
   "$MAVEN_BIN" package

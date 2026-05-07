@@ -3,11 +3,15 @@ package tech.cybersword.tls.fuzzer.util;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
 public class SSLLookup {
+	private static final Logger logger = LoggerUtil.getLogger(SSLLookup.class.getName());
+
     public static void main(String[] args) {
         String hostname = "google.com"; // Replace with your target hostname
         int port = 443; // Standard HTTPS port
@@ -23,8 +27,8 @@ public class SSLLookup {
             sslSocket.startHandshake();
 
             return sslSocket.getSession().getProtocol();
-        } catch (IOException e) {
-            e.printStackTrace();
+		} catch (IOException e) {
+			logger.log(Level.WARNING, "Failed to retrieve SSL/TLS version from " + hostname + ":" + port, e);
             return "Failed to retrieve SSL/TLS version";
         }
     }

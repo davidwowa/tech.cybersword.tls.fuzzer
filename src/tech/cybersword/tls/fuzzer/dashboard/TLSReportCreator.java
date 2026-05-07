@@ -90,17 +90,43 @@ public class TLSReportCreator {
 		lines.add(conclusion);
 		lines.add("");
 		lines.add("Job summary:");
-		for (FuzzerTestStatus status : statuses) {
-			lines.add(status.getName() + " | " + status.getState() + " | " + status.getCompleted() + " / "
-					+ status.getTotal() + " | " + status.getMessage());
-		}
-		lines.add("");
-		lines.add("Recent log entries:");
+			for (FuzzerTestStatus status : statuses) {
+				lines.add(status.getName() + " | " + status.getState() + " | " + status.getCompleted() + " / "
+						+ status.getTotal() + " | " + status.getMessage());
+			}
+			addFlowSection(lines);
+			lines.add("");
+			lines.add("Recent log entries:");
 		int fromIndex = Math.max(0, logs.size() - 18);
 		for (String log : logs.subList(fromIndex, logs.size())) {
 			lines.add(log);
 		}
-		return writePdf(lines);
+			return writePdf(lines);
+		}
+
+	private void addFlowSection(List<String> lines) {
+		Map<String, TLSHandshakeStepStatus> runtime = new java.util.HashMap<>();
+		for (TLSHandshakeStepStatus status : FuzzerStatusRegistry.getInstance().handshakeStepSnapshot()) {
+			runtime.put(status.key(), status);
+		}
+		lines.add("");
+		lines.add("TLS 1.3 protocol flow:");
+		addFlowLines(lines, TLSHandshakeFlows.tls13(), runtime);
+		lines.add("");
+		lines.add("TLS 1.2 protocol flow:");
+		addFlowLines(lines, TLSHandshakeFlows.tls12(), runtime);
+		lines.add("");
+		lines.add("Flow legend: client, server, key schedule, record protection/wrapper, application.");
+	}
+
+	private void addFlowLines(List<String> lines, List<TLSHandshakeStep> steps, Map<String, TLSHandshakeStepStatus> runtime) {
+		for (TLSHandshakeStep step : steps) {
+			TLSHandshakeStepStatus status = runtime.get(TLSHandshakeStepStatus.key(step.protocol(), step.sequence()));
+			String state = status == null ? (step.implemented() ? "READY" : "PLANNED") : status.state();
+			String response = status == null ? "" : " | " + status.responseSummary() + " | request/response bytes "
+					+ status.requestBytes() + "/" + status.responseBytes();
+			lines.add(step.displayName() + " | " + step.category() + " | " + state + response);
+		}
 	}
 
 	private String formatTime(long epochMillis) {

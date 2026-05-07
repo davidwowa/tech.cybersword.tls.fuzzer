@@ -90,9 +90,8 @@ public class TLSSystemTray {
         } catch (Exception e) {
             systemTrayEnabled = false;
             if (logger.isLoggable(Level.SEVERE)) {
-                logger.severe("Error on init system tray");
+                logger.log(Level.SEVERE, "Error on init system tray", e);
             }
-            e.printStackTrace();
         }
     }
 

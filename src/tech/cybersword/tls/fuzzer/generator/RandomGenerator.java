@@ -30,12 +30,11 @@ public class RandomGenerator {
 			byte[] arr = new byte[arraySize];
 			rd.nextBytes(arr);
 			return arr;
-		} catch (NoSuchAlgorithmException e) {
-			if (logger.isLoggable(Level.SEVERE)) {
-				logger.severe("error on generating random byte array" + e.getMessage());
+			} catch (NoSuchAlgorithmException e) {
+				if (logger.isLoggable(Level.SEVERE)) {
+					logger.log(Level.SEVERE, "error on generating random byte array", e);
+				}
 			}
-			e.printStackTrace();
-		}
 		return null;
 	}
 }

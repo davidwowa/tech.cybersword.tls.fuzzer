@@ -3,8 +3,13 @@ package tech.cybersword.tls.fuzzer.random;
 import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class TLSRandomNumber {
+
+	private static final Logger logger = Logger.getLogger(TLSRandomNumber.class.getName());
+
 	public String generateASCIIString(int lenght) {
 		Random random = new Random(255);
 		StringBuilder string = new StringBuilder();
@@ -42,11 +47,9 @@ public class TLSRandomNumber {
 
 			// System.out.println(c);
 		} catch (NullPointerException e) {
-			e.printStackTrace();
-			System.out.println("other steps after this error");
+			logger.log(Level.WARNING, "other steps after this error", e);
 		} catch (Exception e) {
-			e.printStackTrace();
-			System.out.println("other steps after other error");
+			logger.log(Level.WARNING, "other steps after other error", e);
 		} finally {
 
 		}
